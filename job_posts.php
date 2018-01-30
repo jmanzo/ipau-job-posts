@@ -179,3 +179,28 @@ add_action( 'wp_ajax_nopriv_apf_addpost', 'apf_addpost' );
 add_action( 'wp_ajax_apf_addpost', 'apf_addpost' );
 
 
+add_shortcode( 'job-posts', 'display_custom_post_type' );
+
+    function display_custom_post_type(){
+        $args = array(
+            'post_type' => 'job',
+            'post_status' => 'publish'
+        );
+
+        $string = '';
+        $query = new WP_Query( $args );
+        if( $query->have_posts() ){ 
+            $string .= '<div class="job_wrap">';
+            while( $query->have_posts() ){
+                $query->the_post();
+
+                $string .= '<div class="job-item">';
+                $string .= '<h3>' . get_the_title() . '</h3>';
+                $string .= '<h5>It will show the categories here</h5>';
+                $string .= '</div>';
+            }
+            $string .= '</ul>';
+        }
+        wp_reset_postdata();
+        return $string;
+    }
