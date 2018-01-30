@@ -27,8 +27,8 @@ define( 'JOBTEXTDOMAIN', 'custom-posts-job' );
 define( 'PLUGINDIRECTORY', plugin_dir_path( __FILE__ ) );
 
 
-require_once PLUGINDIRECTORY . '/includes/class/Jobs.php';
-require_once PLUGINDIRECTORY . '/includes/create-post-job.php';
+/*require_once PLUGINDIRECTORY . '/includes/class/Jobs.php';
+require_once PLUGINDIRECTORY . '/includes/create-post-job.php';*/
 
 
 /**
@@ -134,8 +134,8 @@ function job_posts_scripts(){
 
     $obj = array(
     	'user' 		=> wp_get_current_user(),
-    	'url'  		=> plugins_url( 'job-posts/includes/create-post-job.php' ),
-    	'home_url'	=> home_url( '/' )
+    	'url'  		=> admin_url( 'admin-ajax.php' ),
+    	'home_url'	=> home_url(),
     );
 
     wp_localize_script( 'job-posts-function', 'obj', $obj );
@@ -144,3 +144,38 @@ function job_posts_scripts(){
     
 }
 add_action( 'wp_enqueue_scripts', 'job_posts_scripts' );
+
+
+//**********************
+function apf_addpost() {
+
+    $results = '';
+    $title = $_POST['post_title'];
+    $content =  $_POST['post_content'];
+    $author = $_POST['post_author'];
+    $slug = str_replace( ' ', '-', strtolower( $_POST['post_category'] ) );
+    $category = get_term_by( 'slug', $slug, 'job_type', OBJECT, 'raw' );
+    $post_id = wp_insert_post( array(
+        'post_title'        => $title,
+        'post_content'      => $content,
+        'post_status'       => 'publish',
+        'post_author'       => $author,
+        'post_category'		=> array( $category->term_id ),
+        'post_type'			=> 'job',
+    ));
+
+    wp_set_object_terms( $post_id, $category->term_id, 'job_type', false );
+ 
+    if ( $post_id != 0 ) {
+        $results = 'Post Added';
+    } else {
+        $results = 'Error occurred while adding the post';
+    }
+    // Return the String
+    die($results);
+}
+// creating Ajax call for WordPress
+add_action( 'wp_ajax_nopriv_apf_addpost', 'apf_addpost' );
+add_action( 'wp_ajax_apf_addpost', 'apf_addpost' );
+
+
