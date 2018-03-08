@@ -68,7 +68,7 @@ class GSJ_Bootstrapper{
     public static function jobsearch(){
         $default = array(
             'post_type' => 'job',
-            'posts_per_page' => 1,
+            'posts_per_page' => 10,
             'order' => 'DESC',
             'orderby' => 'date',
             'paged' => 1
