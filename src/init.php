@@ -126,8 +126,9 @@ class GSJ_Bootstrapper{
         
         if($results->have_posts()){
             $rval = array(
-                'status' => -1,
+                'status' => 1,
                 'data' => array(),
+                'pagination' => array(),
             );
             
             while($results->have_posts()){
@@ -139,7 +140,14 @@ class GSJ_Bootstrapper{
                 
                 $rval['data'][] = ob_get_clean();
             }
+            ob_start();
             wp_reset_postdata();
+            echo '<div id="pagination" class="ajax_pagination">';
+            echo paginate_links(array(
+                'total' => $results->max_num_pages,
+            ));
+            echo '</div>';
+            $rval['pagination'][] = ob_get_clean();
 
         }else{
             $rval = array(
@@ -151,6 +159,10 @@ class GSJ_Bootstrapper{
         echo json_encode($rval);
         die();
     }
+
+    /*public function ajax_pagination() {
+
+    }*/
     
     public static function template_redirects($template){
     	

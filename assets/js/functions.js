@@ -14,7 +14,7 @@ jQuery(document).ready( function($){
             firm_type:'',
             paged:0
         },
-        update:function(subdata){
+        update:function(subdata){ console.log(subdata);
             for(var info in subdata){
                 if(jobform.data.hasOwnProperty(info)){
                     jobform.data[info] = subdata[info];
@@ -40,13 +40,13 @@ jQuery(document).ready( function($){
                     $("#results").append("<p>LOADING</p>");
                 }
             }).done(function(rdata, textStatus, jqXHR){
-                rdata = JSON.parse(rdata);
+                rdata = JSON.parse(rdata); console.log(rdata);
                 if(rdata.status > 0){
                     $("#results").empty();
                     for(var row in rdata.data){
                         $("#results").append(rdata.data[row]);
                     }
-                    $("#results").append(rdata.pagination);
+                    $("#results").append(rdata.pagination[0]);
                 }else{
                    $("#results").empty();
                    $("#results").append("<p>"+rdata.data+"</p>");
@@ -62,7 +62,7 @@ jQuery(document).ready( function($){
         subdata[e.target.name] = params.selected;
         jobform.update(subdata);
     });
-    
+
     var typingTimer;                //timer identifier
     var doneTypingInterval = 500;  //time in ms (5 seconds)
 
@@ -79,6 +79,41 @@ jQuery(document).ready( function($){
         subdata['s'] = keyword;
         jobform.update(subdata);
     }
+
+    $(document).on( 'click', '.ajax_pagination .page-numbers', function( event ) {
+        event.preventDefault();
+        paged = $(this).text()=='Next »' ? parseInt($('.ajax_pagination .page-numbers.current').text())+1 : $(this).text();
+        
+        $.ajax({
+            url: job_form_ajaxdata.url,
+            type: 'post',
+            data: {
+                action:"jobsearch",
+                s:jobform.data.s,
+                job_role:jobform.data.job_role,
+                job_location:jobform.data.job_location,
+                firm_type:jobform.data.firm_type,
+                paged:paged,
+            },
+            beforeSend:function(){
+                $("#results").empty();
+                $("#results").append("<p>LOADING</p>");
+            },
+            success: function(rdata){
+                rdata = JSON.parse(rdata);
+                if(rdata.status > 0){
+                    $("#results").empty();
+                    for(var row in rdata.data){
+                        $("#results").append(rdata.data[row]);
+                    }
+                    $("#results").append(rdata.pagination[0]);
+                }else{
+                   $("#results").empty();
+                   $("#results").append("<p>"+rdata.data+"</p>");
+                }
+            }
+        })
+    })
     
     /**
 	 *	Deprecated
