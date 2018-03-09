@@ -235,7 +235,8 @@ class GSJ_Bootstrapper{
 		    'show_admin_column' => true,
 		    'query_var'         => true,
 		    'public'            => false,
-		    'rewrite'           => false,
+		    'rewrite'           => array( 'slug' => 'job-type' ),
+            'has_archive'       => true,
 	    );
     
         return array('uid'  => 'job_type', 'post_type' => 'job', 'args' => $args);
@@ -455,3 +456,101 @@ add_shortcode( 'job-posts', 'display_custom_post_type' );
         wp_reset_postdata();
         return $string;
     }
+
+
+/* add new tab called "preferences" */
+add_filter('um_account_page_default_tabs_hook', 'my_custom_tab_in_um', 100 );
+function my_custom_tab_in_um( $tabs ) {
+    $tabs[800]['preferences']['icon'] = 'um-faicon-pencil';
+    $tabs[800]['preferences']['title'] = 'Preferences';
+    $tabs[800]['preferences']['custom'] = true;
+    return $tabs;
+}
+    
+/* make our new tab hookable */
+add_action('um_account_tab__preferences', 'um_account_tab__preferences');
+function um_account_tab__preferences( $info ) {
+    global $ultimatemember;
+    extract( $info );
+
+    $output = $ultimatemember->account->get_tab_output('preferences');
+    if ( $output ) 
+        echo $output;
+}
+
+/* Finally we add some content in the tab */
+add_filter('um_account_content_hook_preferences', 'um_account_content_hook_preferences');
+function um_account_content_hook_preferences( $output ){
+    ob_start();
+    
+    require_once __DIR__.'/front/preferences-tab.php';
+
+    $output .= ob_get_contents();
+    ob_end_clean();
+    return $output;
+}
+
+
+add_action( 'cmb2_init', 'job_posts_preferences_tab' );
+/**
+ * Define the metabox and field configurations.
+ */
+function job_posts_preferences_tab() {
+
+    // Start with an underscore to hide fields from custom fields list
+    $prefix = '_preferences_';
+
+    /**
+     * Initiate the metabox
+     */
+    $cmb = new_cmb2_box( array(
+        'id'            => 'preferences_tab_form',
+        'title'         => __( 'Test Metabox', 'cmb2' ),
+        'context'       => 'normal',
+        'show_names'    => true, // Show field names on the left
+    ) );
+
+    $cmb->add_field( array(
+        'name' => __( 'Would you like to receive email communications from us about new potential job openings?', 'cmb2' ),
+        'id'   => $prefix . 'title_email',
+        'type' => 'title',
+    ) );
+
+    $cmb->add_field( array(
+        'name'       => __( 'Accept', 'cmb2' ),
+        'id'         => $prefix . 'email',
+        'type'       => 'checkbox',
+        'show_on_cb' => 'cmb2_hide_if_no_cats', 
+    ) );
+
+    $cmb->add_field( array(
+        'name' => __( 'What sorts of jobs openings are you interested in?', 'cmb2' ),
+        'id'   => $prefix . 'title_preferences',
+        'type' => 'title',
+    ) );
+
+    $cmb->add_field( array(
+        'name'           => 'Job Locations',
+        'id'             => $prefix . 'job_location',
+        'taxonomy'       => 'job_location', //Enter Taxonomy Slug
+        'type'           => 'taxonomy_select',
+        'remove_default' => 'true' // Removes the default metabox provided by WP core. Pending release as of Aug-10-16
+    ) );
+
+    $cmb->add_field( array(
+        'name'           => 'Job Role',
+        'id'             => $prefix . 'job_role',
+        'taxonomy'       => 'job_role', //Enter Taxonomy Slug
+        'type'           => 'taxonomy_select',
+        'remove_default' => 'true' // Removes the default metabox provided by WP core. Pending release as of Aug-10-16
+    ) );
+
+    $cmb->add_field( array(
+        'name'           => 'Firm Type',
+        'id'             => $prefix . 'firm_type',
+        'taxonomy'       => 'firm_type', //Enter Taxonomy Slug
+        'type'           => 'taxonomy_select',
+        'remove_default' => 'true' // Removes the default metabox provided by WP core. Pending release as of Aug-10-16
+    ) );
+
+}

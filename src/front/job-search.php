@@ -1,3 +1,4 @@
+<?php get_header(); ?>
 <div class="container-wrap" style="opacity: 1;">
     <div class="container main-content">
         <style>
@@ -124,3 +125,4 @@
         </div>
     </div>
 </div>
+<?php get_footer(); ?>
