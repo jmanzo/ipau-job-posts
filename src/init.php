@@ -5,6 +5,8 @@
 *
 */
 
+defined( 'ABSPATH' ) or die( 'You can not access here.' );
+
 // Constants
 define('JOBTEXTDOMAIN', 'custom-posts-job');
 define('PLUGINDIRECTORY', __DIR__.'/../');
@@ -26,6 +28,7 @@ class GSJ_Bootstrapper{
     public static function Init(){
         
         self::include_dependencies();
+
         
         add_action('init', array(__CLASS__, 'register_post_types'));
         add_action('init', array(__CLASS__, 'register_taxonomies'));
@@ -38,11 +41,14 @@ class GSJ_Bootstrapper{
         add_filter('um_account_page_default_tabs_hook', array( __CLASS__, 'my_custom_tab_in_um' ), 100 );
         add_action('um_account_content_hook_preferences', array( __CLASS__, 'showExtraFields' ), 100);
         add_action('um_submit_account_details', array( __CLASS__, 'um_submit_account_preferences' ));
+        add_action('um_account_tab__preferences', array( __CLASS__, 'um_account_tab__preferences') );
+        add_action( 'save_post', array( __CLASS__, 'send_notification_job') );
     }
     
     public static function include_dependencies(){
     
         require_once PLUGINDIRECTORY.'/includes/cmb2/init.php';
+        
     }
     
     public static function lang_setup(){
@@ -162,10 +168,6 @@ class GSJ_Bootstrapper{
         echo json_encode($rval);
         die();
     }
-
-    /*public function ajax_pagination() {
-
-    }*/
     
     public static function template_redirects($template){
     	
@@ -341,7 +343,7 @@ class GSJ_Bootstrapper{
         require_once PLUGINDIRECTORY.'/src/front/job-search.php';
     }
     
-    function job_posts_metaboxes() {
+    public static function job_posts_metaboxes() {
 
 	    $prefix = '_job_posts_';
 
@@ -385,6 +387,7 @@ class GSJ_Bootstrapper{
     }
 
     public static function showExtraFields() {
+
         ob_start();
 
         $custom_fields = [
@@ -461,17 +464,36 @@ class GSJ_Bootstrapper{
             }
         }
     }
-}
 
+    public static function add_notification_trigger() {
 
-    
-/* make our new tab hookable */
-add_action('um_account_tab__preferences', 'um_account_tab__preferences');
-function um_account_tab__preferences( $info ) {
-    global $ultimatemember;
-    extract( $info );
+        $args = array(
+            'slug' => 'my_plugin/action',
+            'name' => __( 'Notification job', JOBTEXTDOMAIN ),
+            'title' => __( 'A new job match with you. Check it now!', JOBTETDOMAIN ),
+            'recipients' => array( 'member' ),
+        );
 
-    $output = $ultimatemember->account->get_tab_output('preferences');
-    if ( $output ) 
-        echo $output;
+        register_trigger( $args );
+    }
+
+    public static function um_account_tab__preferences( $info ) {
+
+        global $ultimatemember;
+        extract( $info );
+
+        $output = $ultimatemember->account->get_tab_output('preferences');
+        if ( $output ) 
+            echo $output;
+    }
+
+    public static function send_notification_job( $post_id ) {
+
+        if( 'job' != get_post_type( $post_id ) || 'member' != um_user( 'role' ) )
+            return;
+
+        if ( 'on' == get_user_meta( um_user( 'ID' ), 'preferences_email', true ) ) {
+            notification( 'my_plugin/action' );
+        }
+    }
 }
