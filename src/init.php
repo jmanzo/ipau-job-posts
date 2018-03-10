@@ -35,6 +35,9 @@ class GSJ_Bootstrapper{
         add_action('wp_ajax_nopriv_jobsearch', array(__CLASS__, 'jobsearch'));
         add_filter('template_include', array(__CLASS__, 'template_redirects'), 999);
         add_shortcode( 'jobs-template', array( __CLASS__, 'get_jobs_template' ) );
+        add_filter('um_account_page_default_tabs_hook', array( __CLASS__, 'my_custom_tab_in_um' ), 100 );
+        add_action('um_account_content_hook_preferences', array( __CLASS__, 'showExtraFields' ), 100);
+        add_action('um_submit_account_details', array( __CLASS__, 'um_submit_account_preferences' ));
     }
     
     public static function include_dependencies(){
@@ -340,7 +343,6 @@ class GSJ_Bootstrapper{
     
     function job_posts_metaboxes() {
 
-	    // Start with an underscore to hide fields from custom fields list
 	    $prefix = '_job_posts_';
 
 	    /**
@@ -372,100 +374,96 @@ class GSJ_Bootstrapper{
         	'type' => 'checkbox',
         ));
     }
-}
 
+    public static function my_custom_tab_in_um( $tabs ) {
 
-/**
- * Enqueue scripts and styles.
- */
-function job_posts_scripts(){
-    
-    wp_register_script('job-posts-function', PLUGINDIRURL.'/assets/js/functions.js', array('jquery', 'jquery-ui-selectmenu'));
-
-    $ajaxdata = array(
-    	'user' 		=> wp_get_current_user(),
-    	'url'  		=> admin_url( 'admin-ajax.php' ),
-    	'home_url'	=> home_url(),
-    );
-
-    wp_localize_script( 'job-posts-function', 'job_form_ajaxdata', $ajaxdata);
-
-    wp_enqueue_script('job-posts-function');
-    wp_enqueue_script('chosen-job', PLUGINDIRURL.'/assets/js/chosen.jquery.min.js', array('jquery'));
-    wp_enqueue_style('chosen-job-css', PLUGINDIRURL.'/assets/css/chosen.min.css');
-    wp_enqueue_style('gridonly', 'https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.0.0/css/bootstrap-grid.min.css');
-}
-add_action( 'wp_enqueue_scripts', 'job_posts_scripts' );
-
-
-//**********************
-function apf_addpost() {
-
-    $results = '';
-    $title = $_POST['post_title'];
-    $content =  $_POST['post_content'];
-    $author = $_POST['post_author'];
-    $slug = str_replace( ' ', '-', strtolower( $_POST['post_category'] ) );
-    $category = get_term_by( 'slug', $slug, 'job_type', OBJECT, 'raw' );
-    $post_id = wp_insert_post( array(
-        'post_title'        => $title,
-        'post_content'      => $content,
-        'post_status'       => 'publish',
-        'post_author'       => $author,
-        'post_category'		=> array( $category->term_id ),
-        'post_type'			=> 'job',
-    ));
-
-    wp_set_object_terms( $post_id, $category->term_id, 'job_type', false );
- 
-    if ( $post_id != 0 ) {
-        $results = 'Post Added';
-    } else {
-        $results = 'Error occurred while adding the post';
+        $tabs[800]['preferences']['icon'] = 'um-faicon-pencil';
+        $tabs[800]['preferences']['title'] = 'Preferences';
+        $tabs[800]['preferences']['custom'] = true;
+        
+        return $tabs;
     }
-    // Return the String
-    die($results);
-}
-// creating Ajax call for WordPress
-add_action( 'wp_ajax_nopriv_apf_addpost', 'apf_addpost' );
-add_action( 'wp_ajax_apf_addpost', 'apf_addpost' );
 
+    public static function showExtraFields() {
+        ob_start();
 
-add_shortcode( 'job-posts', 'display_custom_post_type' );
+        $custom_fields = [
+            "preferences_email" => "Would you like to receive email communications from us about new potential job openings?",
+            "preferences_job_location" => "Job Location",
+            "preferences_job_role" => "Job Role",
+            "preferences_firm_type" => "Firm Type",
+        ];
 
-    function display_custom_post_type(){
-        $args = array(
-            'post_type' => 'job',
-            'post_status' => 'publish'
-        );
+        foreach ($custom_fields as $key => $value) {
 
-        $string = '';
-        $query = new WP_Query( $args );
-        if( $query->have_posts() ){ 
-            $string .= '<div class="job_wrap">';
-            while( $query->have_posts() ){
-                $query->the_post();
+            $fields[ $key ] = array(
+                'title' => $value,
+                'metakey' => $key,
+                'type' => 'select',
+                'label' => $value,
+            );
 
-                $string .= '<div class="job-item">';
-                $string .= '<h3>' . get_the_title() . '</h3>';
-                $string .= '<h5>It will show the categories here</h5>';
-                $string .= '</div>';
+            $user_preferences = array( $key => get_user_meta( um_user( 'ID' ), $key, true ) );
+
+            $taxonomy = strtolower( str_replace( ' ', '_', $value ) );
+            $taxonomies = get_terms( array( 
+                'taxonomy' => $taxonomy,
+                'hide_empty' => false,
+            ));
+            apply_filters('um_account_secure_fields', $fields, 'general' );
+
+            $field_value = get_user_meta(um_user('ID'), $key, true) ? : ''; ?>
+
+            <div class="um-field um-field-<?php echo $key ?>" data-key="<?php echo $key ?>">
+                <div class="um-field-label">
+                    <label for="<?php echo $key ?>"><?php echo $value ?></label>
+                    <div class="um-clear"></div>
+                </div>
+                <div class="um-field-area">
+                    <?php if( "preferences_email" == $key ): ?>
+                        Yes <input class="um-form-field valid" type="radio" name="<?php echo $key ?>" id="<?php echo $key ?>" value="on" data-validate="" data-key="<?php echo $key ?>" <?php echo ($user_preferences[$key] == 'on' ? 'checked' : '') ?> />
+                        No <input class="um-form-field valid" type="radio" name="<?php echo $key ?>" id="<?php echo $key ?>" value="off" data-validate="" data-key="<?php echo $key ?>" <?php echo ($user_preferences[$key] == 'off' ? 'checked' : '') ?> />
+                    <?php else: ?>
+                        <select class="um-form-field valid" name="<?php echo $key ?>" id="<?php echo $key ?>">
+                            <option value=""><?php _e( 'None', JOBTEXTDOMAIN ) ?></option>
+                            <?php foreach( $taxonomies as $term ): ?>
+                                <option value="<?php echo $term->slug; ?>" <?php echo ($user_preferences[$key] == $term->slug ? 'selected' : '') ?>><?php echo $term->name; ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php } ?>
+        <div class="um-col-alt um-col-alt-b">
+            <div class="um-left">
+                <input type="submit" name="um_account_submit" id="um_account_submit" value="Update Preferences" class="um-button">
+            </div>
+            <div class="um-clear"></div>
+        </div>
+        <?php $html = ob_get_clean();
+
+        echo $html;
+    }
+
+    public static function um_submit_account_preferences( $args ) {
+
+        $current_tab = isset( $args['_um_account_tab'] ) ? $args['_um_account_tab']: '';
+
+        if ( 'preferences' == $current_tab && $args['preferences_email'] || $args['preferences_job_location'] || $args['preferences_job_role'] || $args['preferences_firm_type'] ) {
+            $changes = array(
+                'preferences_email' => isset( $_POST['preferences_email'] ) ? $_POST['preferences_email'] : '',
+                'preferences_job_location' => isset( $_POST['preferences_job_location'] ) ? $_POST['preferences_job_location'] : '',
+                'preferences_job_role' => isset( $_POST['preferences_job_role'] ) ? $_POST['preferences_job_role'] : '',
+                'preferences_firm_type' => isset( $_POST['preferences_firm_type'] ) ? $_POST['preferences_firm_type'] : '',
+            );
+            foreach ($changes as $key => $value) {
+                update_user_meta( um_user( 'ID' ), $key, $value );
             }
-            $string .= '</ul>';
         }
-        wp_reset_postdata();
-        return $string;
     }
-
-
-/* add new tab called "preferences" */
-add_filter('um_account_page_default_tabs_hook', 'my_custom_tab_in_um', 100 );
-function my_custom_tab_in_um( $tabs ) {
-    $tabs[800]['preferences']['icon'] = 'um-faicon-pencil';
-    $tabs[800]['preferences']['title'] = 'Preferences';
-    $tabs[800]['preferences']['custom'] = true;
-    return $tabs;
 }
+
+
     
 /* make our new tab hookable */
 add_action('um_account_tab__preferences', 'um_account_tab__preferences');
@@ -476,81 +474,4 @@ function um_account_tab__preferences( $info ) {
     $output = $ultimatemember->account->get_tab_output('preferences');
     if ( $output ) 
         echo $output;
-}
-
-/* Finally we add some content in the tab */
-add_filter('um_account_content_hook_preferences', 'um_account_content_hook_preferences');
-function um_account_content_hook_preferences( $output ){
-    ob_start();
-    
-    require_once __DIR__.'/front/preferences-tab.php';
-
-    $output .= ob_get_contents();
-    ob_end_clean();
-    return $output;
-}
-
-
-add_action( 'cmb2_init', 'job_posts_preferences_tab' );
-/**
- * Define the metabox and field configurations.
- */
-function job_posts_preferences_tab() {
-
-    // Start with an underscore to hide fields from custom fields list
-    $prefix = '_preferences_';
-
-    /**
-     * Initiate the metabox
-     */
-    $cmb = new_cmb2_box( array(
-        'id'            => 'preferences_tab_form',
-        'title'         => __( 'Test Metabox', 'cmb2' ),
-        'context'       => 'normal',
-        'show_names'    => true, // Show field names on the left
-    ) );
-
-    $cmb->add_field( array(
-        'name' => __( 'Would you like to receive email communications from us about new potential job openings?', 'cmb2' ),
-        'id'   => $prefix . 'title_email',
-        'type' => 'title',
-    ) );
-
-    $cmb->add_field( array(
-        'name'       => __( 'Accept', 'cmb2' ),
-        'id'         => $prefix . 'email',
-        'type'       => 'checkbox',
-        'show_on_cb' => 'cmb2_hide_if_no_cats', 
-    ) );
-
-    $cmb->add_field( array(
-        'name' => __( 'What sorts of jobs openings are you interested in?', 'cmb2' ),
-        'id'   => $prefix . 'title_preferences',
-        'type' => 'title',
-    ) );
-
-    $cmb->add_field( array(
-        'name'           => 'Job Locations',
-        'id'             => $prefix . 'job_location',
-        'taxonomy'       => 'job_location', //Enter Taxonomy Slug
-        'type'           => 'taxonomy_select',
-        'remove_default' => 'true' // Removes the default metabox provided by WP core. Pending release as of Aug-10-16
-    ) );
-
-    $cmb->add_field( array(
-        'name'           => 'Job Role',
-        'id'             => $prefix . 'job_role',
-        'taxonomy'       => 'job_role', //Enter Taxonomy Slug
-        'type'           => 'taxonomy_select',
-        'remove_default' => 'true' // Removes the default metabox provided by WP core. Pending release as of Aug-10-16
-    ) );
-
-    $cmb->add_field( array(
-        'name'           => 'Firm Type',
-        'id'             => $prefix . 'firm_type',
-        'taxonomy'       => 'firm_type', //Enter Taxonomy Slug
-        'type'           => 'taxonomy_select',
-        'remove_default' => 'true' // Removes the default metabox provided by WP core. Pending release as of Aug-10-16
-    ) );
-
 }
