@@ -20,16 +20,6 @@ defined( 'ABSPATH' ) or die( 'You can not access here.' );
  * Load initializer
  * 
  */
-require_once ( __DIR__ . '/includes/notification/load.php');
 require_once __DIR__.'/src/init.php';
-
-function add_notification_trigger() {
-
-        register_trigger( array(
-            'slug'     => 'my_plugin/action',
-            'name'     => __( 'Notification job', JOBTEXTDOMAIN ),
-        ) );
-    }
-add_action( 'init', 'add_notification_trigger', 10 );
 
 GSJ_Bootstrapper::Init();
