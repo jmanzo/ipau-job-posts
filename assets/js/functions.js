@@ -14,7 +14,13 @@ jQuery(document).ready( function($){
             firm_type:'',
             paged:0
         },
-        update:function(subdata){ console.log(subdata);
+        getPage:function(){
+            jobform.data.paged = $('#filterForm input[name="page"]').val();
+            console.log(jobform.data.paged);
+        },
+        update:function(subdata){
+            console.log(subdata);
+            jobform.getPage();
             for(var info in subdata){
                 if(jobform.data.hasOwnProperty(info)){
                     jobform.data[info] = subdata[info];
@@ -80,6 +86,31 @@ jQuery(document).ready( function($){
         jobform.update(subdata);
     }
 
+    $(document).on('click', '#pagination a', function(e){
+        e.preventDefault();
+        var link = $(this).attr('href');
+        var form = $('#filterForm');
+        form.attr('action', link);
+        form.submit();
+    });
+    
+    $(document).on('click', '#applybtn', function(e){
+        $('#apply').addClass('active'); 
+    });
+    
+    $(document).on('click', '#apply .close-hotspot', function(e){
+        $('#apply').removeClass('active'); 
+    });
+    
+    $('.marquee').marquee({
+        pauseOnHover: true,
+        duration: 5000,
+        gap: 50,
+        delayBeforeStart: 0,
+        direction: 'left',
+    });
+
+/*
     $(document).on( 'click', '.ajax_pagination .page-numbers', function( event ) {
         event.preventDefault();
         paged = $(this).text()=='Next »' ? parseInt($('.ajax_pagination .page-numbers.current').text())+1 : $(this).text();
@@ -114,7 +145,8 @@ jQuery(document).ready( function($){
             }
         })
     })
-    
+ */
+ 
     /**
 	 *	Deprecated
 	 *
