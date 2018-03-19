@@ -58,7 +58,8 @@ class GSJ_Bootstrapper{
     private static function register_post_types(){
         
         require_once __DIR__.'/backend/post_types/config.php';
-        Post_Types::init();
+        $post_type = new Post_Types();
+        $post_type->init();
 
     }
     
