@@ -53,19 +53,40 @@ class Notifications{
                 break;
         }
 
-        $meta_query = array(
-            'relation' => 'OR',
-            array(
-                'key' => 'preferences_email',
-                'value' => 'On',
-                'compare' => '='
-            ),
+        $args = array(
+            'meta_key' => 'preferences_email',
+            'meta_value' => 'on',
+            'meta_compare' => '=',
         );
+        $meta_query = array( 'relation' => 'AND' );
         $taxonomies = array();
 
         foreach ($_POST['tax_input'] as $key => $value) {
 
             $term = get_term_by( 'id', $value[1], $key, OBJECT );
+
+            if ( '' == $term->slug )
+                continue;
+
+            if ( 'firm_type' == $key ) {
+                $array2 = array(
+                    'relation' => 'OR',
+                    array(
+                        'key' => 'preferences_firm_type',
+                        'value' => $term->slug,
+                        'compare' => '=',
+                    ),
+                    array(
+                        'key' => 'preferences_firm_type',
+                        'value' => '',
+                        'compare' => '=',
+                    ),
+                );
+                array_push($meta_query, $array2);
+            }
+
+            if( ! isset($value[1]) || 'job_type' == $key || 'firm_type' == $key )
+                continue;
             
             $array = array(
                 'key' => 'preferences_' . $key,
@@ -76,8 +97,9 @@ class Notifications{
             
             $taxonomies[$key] = $value[1];
         }
+        $args['meta_query'] = $meta_query;
 
-        $user_query = new WP_User_Query( $meta_query );
+        $user_query = new WP_User_Query( $args );
         $members = $user_query->get_results();
 
         foreach ($members as $member) {
@@ -87,11 +109,13 @@ class Notifications{
             self::compose_message( $post, $taxonomies );
 
             $content = ob_get_clean();
+            
             notification( 'my_plugin/action', array(
                 'member_email' => $member->data->user_email,
                 'job_list' => $content,
             ) );
         }
+
         return;
     }
 
